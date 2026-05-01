@@ -1663,7 +1663,7 @@ function renderAll() {
   renderDashboard();
   renderBudget();
   renderGoals();
-  if (currentScreen === 'sync') renderSync();
+  // Never auto-refresh sync screen — it's a form the user is actively editing
   if (currentScreen === 'profile') renderProfile();
 }
 
