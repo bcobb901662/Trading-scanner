@@ -294,9 +294,50 @@
     transition: transform .15s;
   }
   .fab:active { transform: scale(.93); }
+
+  /* SYNC INDICATOR */
+  .sync-dot {
+    position: fixed; top: 14px; right: 14px; z-index: 200;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--success); opacity: 0;
+    transition: opacity .4s; box-shadow: 0 0 6px var(--success);
+  }
+
+  /* HOUSEHOLD CARD */
+  .household-card {
+    background: linear-gradient(135deg,#1d4ed8,#7c3aed);
+    border-radius: var(--radius); padding: 16px 18px;
+    margin-bottom: 14px; color: #fff;
+  }
+  .household-label { font-size: 11px; opacity: .75; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 6px; }
+  .household-code { font-size: 32px; font-weight: 900; letter-spacing: 4px; margin-bottom: 4px; }
+  .household-members { font-size: 13px; opacity: .85; margin-bottom: 12px; }
+  .household-copy {
+    background: rgba(255,255,255,.2); border: none; color: #fff;
+    border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 700;
+    cursor: pointer; margin-right: 8px;
+  }
+  .household-join-btn {
+    background: none; border: 1.5px solid rgba(255,255,255,.5); color: #fff;
+    border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* JOIN OVERLAY */
+  .join-step { display: none; }
+  .join-step.active { display: block; }
+  .ob-step { display: none; }
+  .ob-step.active { display: block; }
+  .step-btns { display: flex; gap: 10px; margin-top: 8px; }
+  .step-btns .btn { flex: 1; }
+  .or-divider { text-align: center; color: var(--muted); font-size: 13px; margin: 12px 0; }
 </style>
 </head>
 <body>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+<div class="sync-dot" id="sync-dot"></div>
 
 <!-- ═══ ONBOARDING ═══ -->
 <div class="overlay" id="onboard-overlay">
@@ -306,19 +347,69 @@
     <div class="onboard-title">PocketCheck</div>
     <div class="onboard-sub">Take control of your money in minutes.<br>No jargon. No stress.</div>
 
-    <div class="form-group">
-      <label class="form-label" id="lbl-ob-name">Your first name</label>
-      <input id="ob-name" class="form-input" type="text" placeholder="e.g. Maria" maxlength="24">
+    <!-- Step 1: Name -->
+    <div class="ob-step active" id="ob-step1">
+      <div class="form-group">
+        <label class="form-label" id="lbl-ob-name">Your first name</label>
+        <input id="ob-name" class="form-input" type="text" placeholder="e.g. Maria" maxlength="24">
+      </div>
+      <div class="step-btns">
+        <button class="btn btn-primary" onclick="obNext()">Continue →</button>
+      </div>
     </div>
-    <div class="form-group">
-      <label class="form-label" id="lbl-ob-pay">Monthly take-home pay ($)</label>
-      <input id="ob-pay" class="form-input" type="number" placeholder="2400" min="1">
+
+    <!-- Step 2: New or Join -->
+    <div class="ob-step" id="ob-step2">
+      <div class="onboard-sub" style="margin-bottom:18px;">Hi <strong id="ob-name-preview"></strong>! Setting up for yourself or joining your partner?</div>
+      <div class="step-btns" style="flex-direction:column;">
+        <button class="btn btn-primary" onclick="obShowSetup()">🏠 Create New Household</button>
+        <button class="btn btn-outline" onclick="obShowJoin()">🔗 Join Existing Household</button>
+      </div>
     </div>
-    <div class="form-group">
-      <label class="form-label" id="lbl-ob-date">Next payday</label>
-      <input id="ob-date" class="form-input" type="date">
+
+    <!-- Step 3a: New household setup -->
+    <div class="ob-step" id="ob-step3-new">
+      <div class="form-group">
+        <label class="form-label" id="lbl-ob-pay">Monthly take-home pay ($)</label>
+        <input id="ob-pay" class="form-input" type="number" placeholder="2400" min="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label" id="lbl-ob-date">Next payday</label>
+        <input id="ob-date" class="form-input" type="date">
+      </div>
+      <button class="btn btn-primary" onclick="finishOnboard()" id="ob-go">Get Started →</button>
     </div>
-    <button class="btn btn-primary" onclick="finishOnboard()" id="ob-go">Get Started →</button>
+
+    <!-- Step 3b: Join household -->
+    <div class="ob-step" id="ob-step3-join">
+      <div class="form-group">
+        <label class="form-label">Enter your partner's household code</label>
+        <input id="ob-join-code" class="form-input" type="text" placeholder="e.g. ABC123" maxlength="6"
+          style="text-transform:uppercase;letter-spacing:4px;font-size:22px;font-weight:700;text-align:center;">
+      </div>
+      <button class="btn btn-primary" onclick="finishJoin()" id="ob-join-btn">Join Household →</button>
+      <div id="ob-join-error" style="color:var(--danger);font-size:13px;text-align:center;margin-top:10px;display:none;">
+        Code not found. Check with your partner.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ JOIN CODE MODAL (for existing users) ═══ -->
+<div class="overlay" id="join-overlay">
+  <div class="modal">
+    <div class="modal-drag"></div>
+    <button class="modal-close" onclick="closeModal('join-overlay')">✕</button>
+    <div class="modal-title">Join a Household</div>
+    <div class="form-group">
+      <label class="form-label">Enter household code</label>
+      <input id="join-code-inp" class="form-input" type="text" placeholder="ABC123" maxlength="6"
+        style="text-transform:uppercase;letter-spacing:4px;font-size:22px;font-weight:700;text-align:center;">
+    </div>
+    <button class="btn btn-primary" onclick="joinFromProfile()">Join →</button>
+    <div id="join-error" style="color:var(--danger);font-size:13px;text-align:center;margin-top:10px;display:none;">
+      Code not found. Double-check with your partner.
+    </div>
   </div>
 </div>
 
@@ -532,6 +623,15 @@
   <div class="profile-name" id="profile-name-disp">—</div>
   <div class="profile-email" id="lbl-profile-sub">PocketCheck Member</div>
 
+  <!-- Household sync card -->
+  <div class="household-card" id="household-card">
+    <div class="household-label">🔗 Household Code — share with family</div>
+    <div class="household-code" id="household-code-disp">——</div>
+    <div class="household-members" id="household-members-disp">Just you</div>
+    <button class="household-copy" onclick="copyCode()">📋 Copy Code</button>
+    <button class="household-join-btn" onclick="openModal('join-overlay')">Join Another</button>
+  </div>
+
   <div style="margin-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);" id="lbl-choose-plan">Choose Your Plan</div>
   <div class="plan-card selected" id="plan-free" onclick="setPlan('free')">
     <div class="plan-name" id="lbl-plan-free">Free</div>
@@ -739,17 +839,130 @@ const DEFAULT_CATEGORIES = [
 ];
 
 // ════════════════════════════════════════
+//  FIREBASE
+// ════════════════════════════════════════
+firebase.initializeApp({
+  apiKey: "AIzaSyBvoxresclEjXQXaaVX-G5kg2ohpTh1xe8",
+  authDomain: "pocketcheck-7b47c.firebaseapp.com",
+  projectId: "pocketcheck-7b47c",
+  storageBucket: "pocketcheck-7b47c.firebasestorage.app",
+  messagingSenderId: "920219178870",
+  appId: "1:920219178870:web:d79b4ffca29b34e5348c57",
+});
+const db = firebase.firestore();
+
+let cloudUnsubscribe = null;
+let saveTimer = null;
+
+function genCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let c = '';
+  for (let i = 0; i < 6; i++) c += chars[Math.floor(Math.random() * chars.length)];
+  return c;
+}
+
+function saveCloud() {
+  if (!S.householdCode) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    db.collection('households').doc(S.householdCode).set({
+      categories: S.categories,
+      transactions: S.transactions,
+      goals: S.goals,
+      paycheck: S.paycheck,
+      members: S.members || [],
+      plan: S.user.plan,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true }).catch(e => console.error('Cloud save error:', e));
+  }, 700);
+}
+
+function listenHousehold() {
+  if (cloudUnsubscribe) cloudUnsubscribe();
+  cloudUnsubscribe = db.collection('households').doc(S.householdCode)
+    .onSnapshot(doc => {
+      if (!doc.exists || doc.metadata.hasPendingWrites) return;
+      const d = doc.data();
+      S.categories = d.categories || S.categories;
+      S.transactions = d.transactions || S.transactions;
+      S.goals = d.goals || S.goals;
+      S.paycheck = d.paycheck || S.paycheck;
+      S.members = d.members || S.members;
+      if (d.plan) S.user.plan = d.plan;
+      save();
+      renderAll();
+      // flash sync dot
+      const dot = document.getElementById('sync-dot');
+      if (dot) { dot.style.opacity = '1'; setTimeout(() => dot.style.opacity = '0', 1500); }
+    }, e => console.error('Listener error:', e));
+}
+
+async function createHousehold() {
+  const code = genCode();
+  S.householdCode = code;
+  S.members = [S.user.name];
+  await db.collection('households').doc(code).set({
+    code,
+    categories: S.categories,
+    transactions: [],
+    goals: [],
+    paycheck: S.paycheck,
+    members: S.members,
+    plan: 'free',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+  });
+  save();
+  listenHousehold();
+}
+
+async function joinHousehold(code) {
+  const snap = await db.collection('households').doc(code).get();
+  if (!snap.exists) return false;
+  const d = snap.data();
+  S.householdCode = code;
+  S.categories = d.categories || S.categories;
+  S.transactions = d.transactions || [];
+  S.goals = d.goals || [];
+  S.paycheck = d.paycheck || S.paycheck;
+  S.members = d.members || [];
+  if (!S.members.includes(S.user.name)) {
+    S.members.push(S.user.name);
+    db.collection('households').doc(code).update({ members: S.members });
+  }
+  if (d.plan) S.user.plan = d.plan;
+  save();
+  listenHousehold();
+  return true;
+}
+
+function copyCode() {
+  if (!S.householdCode) return;
+  navigator.clipboard.writeText(S.householdCode).then(() => {
+    const btn = document.querySelector('.household-copy');
+    if (!btn) return;
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  }).catch(() => {
+    prompt('Your household code:', S.householdCode);
+  });
+}
+
+// ════════════════════════════════════════
 //  STATE
 // ════════════════════════════════════════
 let S = {
   user: { name: '', plan: 'free' },
+  householdCode: '',
+  members: [],
   paycheck: { amount: 2400, date: '', freq: 'monthly' },
   categories: JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)),
-  transactions: [],   // { id, catId, name, amount, date, emoji }
+  transactions: [],
   goals: [],
   settings: { alerts: true, privacy: true },
   lang: 'en',
-  dismissed: [],      // alert ids dismissed this session
+  dismissed: [],
 };
 
 const KEY = 'pocketcheck_v2';
@@ -763,6 +976,7 @@ function load() {
 
 function save() {
   localStorage.setItem(KEY, JSON.stringify(S));
+  saveCloud();
 }
 
 function isFirstRun() {
@@ -835,28 +1049,80 @@ document.querySelectorAll('.overlay').forEach(ov => {
 //  ONBOARDING
 // ════════════════════════════════════════
 function showOnboard() {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 14);
-  document.getElementById('ob-date').value = tomorrow.toISOString().split('T')[0];
+  const d = new Date(); d.setDate(d.getDate() + 14);
+  document.getElementById('ob-date').value = d.toISOString().split('T')[0];
+  document.querySelectorAll('.ob-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('ob-step1').classList.add('active');
   openModal('onboard-overlay');
 }
 
-function finishOnboard() {
+function obNext() {
   const name = document.getElementById('ob-name').value.trim();
+  if (!name) { document.getElementById('ob-name').focus(); return; }
+  S.user.name = name;
+  document.getElementById('ob-name-preview').textContent = name;
+  document.querySelectorAll('.ob-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('ob-step2').classList.add('active');
+}
+
+function obShowSetup() {
+  document.querySelectorAll('.ob-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('ob-step3-new').classList.add('active');
+}
+
+function obShowJoin() {
+  document.querySelectorAll('.ob-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('ob-step3-join').classList.add('active');
+}
+
+async function finishOnboard() {
   const pay  = parseFloat(document.getElementById('ob-pay').value);
   const date = document.getElementById('ob-date').value;
-  if (!name) { document.getElementById('ob-name').focus(); return; }
   if (!pay || pay <= 0) { document.getElementById('ob-pay').focus(); return; }
 
-  S.user.name = name;
+  const btn = document.getElementById('ob-go');
+  btn.textContent = 'Setting up…'; btn.disabled = true;
+
   S.paycheck.amount = pay;
   S.paycheck.date = date;
-
-  // auto-allocate budgets from paycheck
   S.categories.forEach(c => { c.budget = Math.round((c.pct / 100) * pay); });
 
-  save();
+  await createHousehold();
   closeModal('onboard-overlay');
+  renderAll();
+
+  btn.textContent = 'Get Started →'; btn.disabled = false;
+}
+
+async function finishJoin() {
+  const code = document.getElementById('ob-join-code').value.trim().toUpperCase();
+  if (code.length < 6) { document.getElementById('ob-join-code').focus(); return; }
+
+  const btn = document.getElementById('ob-join-btn');
+  btn.textContent = 'Joining…'; btn.disabled = true;
+
+  const ok = await joinHousehold(code);
+  if (!ok) {
+    document.getElementById('ob-join-error').style.display = 'block';
+    btn.textContent = 'Join Household →'; btn.disabled = false;
+    return;
+  }
+  closeModal('onboard-overlay');
+  renderAll();
+}
+
+async function joinFromProfile() {
+  const code = document.getElementById('join-code-inp').value.trim().toUpperCase();
+  if (code.length < 6) return;
+  const btn = document.querySelector('#join-overlay .btn-primary');
+  btn.textContent = 'Joining…'; btn.disabled = true;
+  const ok = await joinHousehold(code);
+  if (!ok) {
+    document.getElementById('join-error').style.display = 'block';
+    btn.textContent = 'Join →'; btn.disabled = false;
+    return;
+  }
+  closeModal('join-overlay');
   renderAll();
 }
 
@@ -1378,6 +1644,15 @@ function renderProfile() {
   document.getElementById('tog-alerts').classList.toggle('on', S.settings.alerts);
   document.getElementById('tog-priv').classList.toggle('on', S.settings.privacy);
   document.getElementById('tog-lang').classList.toggle('on', S.lang === 'es');
+
+  // household
+  const codeEl = document.getElementById('household-code-disp');
+  const membersEl = document.getElementById('household-members-disp');
+  if (codeEl) codeEl.textContent = S.householdCode || '——';
+  if (membersEl) {
+    const m = (S.members || []).filter(Boolean);
+    membersEl.textContent = m.length > 1 ? '👥 ' + m.join(' & ') : '👤 Just you';
+  }
 }
 
 // ════════════════════════════════════════
@@ -1402,9 +1677,10 @@ if (isFirstRun()) {
   showOnboard();
 } else {
   renderAll();
+  // Re-attach Firestore listener so sync resumes on reload
+  if (S.householdCode) listenHousehold();
 }
 
-// hide FAB on non-dashboard/budget screens initially
 document.getElementById('fab-btn').style.display = 'flex';
 
 // Register service worker for PWA / offline support
