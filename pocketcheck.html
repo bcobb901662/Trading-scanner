@@ -770,7 +770,7 @@ const t = key => typeof TX[S.lang][key] === 'function' ? TX[S.lang][key] : TX[S.
 function catSpent(catId) {
   const now = new Date();
   return S.transactions
-    .filter(tx => tx.catId === catId && new Date(tx.date).getMonth() === now.getMonth() && new Date(tx.date).getFullYear() === now.getFullYear())
+    .filter(tx => tx.catId === catId && new Date(tx.date + 'T12:00:00').getMonth() === now.getMonth() && new Date(tx.date + 'T12:00:00').getFullYear() === now.getFullYear())
     .reduce((a, tx) => a + tx.amount, 0);
 }
 
@@ -1122,9 +1122,9 @@ function logExpense() {
   });
   save();
   closeModal('expense-overlay');
-  S.dismissed = S.dismissed.filter(d => !d.startsWith(expenseCatId)); // re-check alerts
-  if (currentScreen === 'dashboard') renderDashboard();
-  if (currentScreen === 'budget') renderBudget();
+  S.dismissed = S.dismissed.filter(d => !d.startsWith(expenseCatId));
+  renderDashboard();
+  renderBudget();
 }
 
 function openEditBudget(catId) {
@@ -1180,8 +1180,8 @@ function logQuickExpense() {
   save();
   closeModal('quick-overlay');
   S.dismissed = S.dismissed.filter(d => !d.startsWith(catId));
-  if (currentScreen === 'dashboard') renderDashboard();
-  if (currentScreen === 'budget') renderBudget();
+  renderDashboard();
+  renderBudget();
 }
 
 // ════════════════════════════════════════
