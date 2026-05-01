@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>PocketCheck</title>
+<link rel="manifest" href="/Trading-scanner/manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="PocketCheck">
+<meta name="theme-color" content="#2563eb">
+<link rel="apple-touch-icon" href="/Trading-scanner/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/Trading-scanner/icon-192.png">
 <style>
   :root {
     --primary: #2563eb;
@@ -1398,6 +1406,11 @@ if (isFirstRun()) {
 
 // hide FAB on non-dashboard/budget screens initially
 document.getElementById('fab-btn').style.display = 'flex';
+
+// Register service worker for PWA / offline support
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/Trading-scanner/sw.js');
+}
 </script>
 </body>
 </html>
