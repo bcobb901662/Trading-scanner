@@ -689,7 +689,7 @@ function saveCloud(){
 function listenHousehold(){
   if(cloudUnsubscribe)cloudUnsubscribe();
   cloudUnsubscribe=db.collection('households').doc(S.householdCode).onSnapshot(doc=>{
-    if(!doc.exists||doc.metadata.hasPendingWrites)return;
+    if(!doc.exists||doc.metadata.hasPendingWrites||saveTimer!==null)return;
     const d=doc.data();
     if(d.categories)S.categories=d.categories;
     if(d.transactions)S.transactions=d.transactions;
@@ -972,11 +972,13 @@ function dismissAlert(id,el){S.dismissed.push(id);el.remove()}
 function renderDashboard(){
   renderAlerts();
   renderMonthNav('dash-month-nav');
-  const spent=totalSpent(),budget=totalBudget(),savings=savingsSpent(),rem=Math.max(0,budget-spent);
+  const spent=totalSpent(),budget=totalBudget(),savings=savingsSpent();
+  const income=totalIncome();
+  const rem=Math.max(0,(income||budget)-spent);
   const pct=budget>0?Math.round(spent/budget*100):0;
   document.getElementById('dash-hello').textContent=`👋 ${S.lang==='en'?'Hello':'Hola'}, ${S.user.name||'—'}!`;
   document.getElementById('hero-remaining').textContent=fmt(rem);
-  document.getElementById('hero-sub').textContent=(S.lang==='en'?'of ':'de ')+fmt(budget)+' budget';
+  document.getElementById('hero-sub').textContent=(S.lang==='en'?'of ':'de ')+fmt(income||budget)+' income';
   document.getElementById('hero-spent').textContent=fmt(spent);
   document.getElementById('hero-saved').textContent=fmt(savings);
   document.getElementById('hero-days').textContent=isViewingCurrentMonth()?daysLeftInMonth():'—';
@@ -1168,7 +1170,9 @@ function logExpense(){
   if(!amt||amt<=0){document.getElementById('exp-amt').focus();return}
   const cat=S.categories.find(c=>c.id===expenseCatId);
   const catName=typeof cat.name==='object'?cat.name['en']:cat.name;
-  const tx={id:Date.now().toString(),catId:expenseCatId,name:name||catName,amount:amt,date:new Date().toISOString().split('T')[0],emoji:cat.emoji};
+  const _now=new Date();
+  const _localDate=`${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}-${String(_now.getDate()).padStart(2,'0')}`;
+  const tx={id:Date.now().toString(),catId:expenseCatId,name:name||catName,amount:amt,date:_localDate,emoji:cat.emoji};
   if(note)tx.note=note;
   if(recurring){
     tx.recurring=true;
@@ -1216,7 +1220,9 @@ function logQuickExpense(){
   if(!amt||amt<=0){document.getElementById('quick-amt').focus();return}
   const cat=S.categories.find(c=>c.id===catId);
   const catName=typeof cat.name==='object'?cat.name['en']:cat.name;
-  const tx={id:Date.now().toString(),catId,name:name||catName,amount:amt,date:new Date().toISOString().split('T')[0],emoji:cat.emoji};
+  const _now2=new Date();
+  const _localDate2=`${_now2.getFullYear()}-${String(_now2.getMonth()+1).padStart(2,'0')}-${String(_now2.getDate()).padStart(2,'0')}`;
+  const tx={id:Date.now().toString(),catId,name:name||catName,amount:amt,date:_localDate2,emoji:cat.emoji};
   if(note)tx.note=note;
   if(recurring){
     tx.recurring=true;
