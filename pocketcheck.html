@@ -269,6 +269,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .color-swatch{width:28px;height:28px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:border-color .1s}
 .color-swatch.picked{border-color:var(--text)}
 
+/* PWA INSTALL BANNER */
+.pwa-banner{display:none;align-items:center;gap:10px;background:linear-gradient(135deg,#1d4ed8,#7c3aed);color:#fff;padding:11px 14px;border-radius:var(--radius-sm);margin-bottom:12px;font-size:13px;font-weight:600;line-height:1.3}
+.pwa-banner-text{flex:1}
+.pwa-install-btn{background:rgba(255,255,255,.25);border:1.5px solid rgba(255,255,255,.6);color:#fff;border-radius:8px;padding:6px 13px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.pwa-dismiss-btn{background:none;border:none;color:rgba(255,255,255,.7);font-size:16px;cursor:pointer;padding:2px 4px;flex-shrink:0}
+
+/* PAYCHECK COUNTDOWN CARD */
+.payday-card{background:linear-gradient(135deg,#065f46,#047857);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:12px;color:#fff;display:flex;align-items:center;gap:12px}
+.payday-card-icon{font-size:26px;flex-shrink:0}
+.payday-card-label{font-size:11px;opacity:.75;text-transform:uppercase;letter-spacing:.05em;margin-bottom:1px}
+.payday-card-days{font-size:20px;font-weight:800}
+.payday-card-date{font-size:11px;opacity:.7;margin-top:1px}
+.payday-card-bar{flex:1;height:5px;background:rgba(255,255,255,.25);border-radius:3px;overflow:hidden;margin-top:6px}
+.payday-card-fill{height:100%;background:rgba(255,255,255,.8);border-radius:3px;transition:width .4s}
+
+/* INCOME PROGRESS BAR */
+.income-bar-card{background:var(--card);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:12px;box-shadow:var(--shadow)}
+.income-bar-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;font-size:12px}
+.income-bar-label{color:var(--muted);font-weight:600}
+.income-bar-pct{font-weight:800;font-size:13px}
+
+/* CATEGORY TAP HINT */
+.cat-tap-hint{font-size:10px;color:var(--muted);opacity:.6;float:right;margin-top:-1px}
+
 @media(max-width:360px){.hero-amount{font-size:30px}.hero-stat-val{font-size:14px}}
 </style>
 </head>
@@ -498,16 +522,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <!-- DASHBOARD -->
 <section id="screen-dashboard" class="screen active">
   <div class="topbar">
-    <div><div class="topbar-title" id="dash-hello">👋 Hello!</div>
-      <div class="topbar-sub" id="dash-paycheck-sub"></div></div>
+    <div><div class="topbar-title" id="dash-hello">👋 Hello!</div></div>
     <button class="lang-btn" onclick="toggleLang()">ES</button>
   </div>
+  <div id="pwa-banner" class="pwa-banner">
+    <div class="pwa-banner-text">📲 Add PocketCheck to your home screen for the best experience!</div>
+    <button class="pwa-install-btn" onclick="installPWA()">Install</button>
+    <button class="pwa-dismiss-btn" onclick="dismissPWA()">✕</button>
+  </div>
   <div id="dash-alerts"></div>
+  <div id="payday-card-wrap"></div>
   <div id="dash-month-nav"></div>
   <div class="hero">
     <div class="hero-label">Left to Spend</div>
     <div class="hero-amount" id="hero-remaining">$0</div>
-    <div class="hero-sub" id="hero-sub">of $0 budget</div>
+    <div class="hero-sub" id="hero-sub">of $0 income</div>
     <div id="hero-velocity"></div>
     <div class="hero-row">
       <div class="hero-stat"><div class="hero-stat-label">Spent</div><div class="hero-stat-val" id="hero-spent">$0</div></div>
@@ -515,6 +544,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="hero-stat"><div class="hero-stat-label">Days Left</div><div class="hero-stat-val" id="hero-days">—</div></div>
     </div>
   </div>
+  <div id="income-bar-wrap"></div>
   <div class="card" id="bills-card" style="display:none">
     <div style="display:flex;align-items:center;justify-content:space-between">
       <div class="card-title" style="margin-bottom:0">📅 Upcoming Bills</div>
@@ -545,7 +575,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
   <div id="budget-month-nav"></div>
   <div class="card">
-    <div class="card-title">Categories</div>
+    <div class="card-title">Categories <span class="cat-tap-hint">tap any row to log expense</span></div>
     <div id="cat-list"></div>
     <button class="manage-cats-btn" onclick="openManageCats()">⚙️ Manage Categories</button>
   </div>
@@ -564,7 +594,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="income-total-lbl">Total Monthly Income</div>
       <div class="income-total-val" id="income-total-val">$0</div>
     </div>
-    <div class="card-title">Adjust Allocations</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div class="card-title" style="margin-bottom:0">Adjust Allocations</div>
+      <button class="btn-ghost" style="font-size:12px;color:var(--primary)" onclick="resetAllocToDefaults()">🔄 Suggested</button>
+    </div>
     <div id="alloc-total-bar"></div>
     <div id="alloc-sliders"></div>
     <button class="btn btn-primary" onclick="applyPaycheck()">Apply Budget</button>
@@ -670,6 +703,34 @@ firebase.initializeApp({
 });
 const db = firebase.firestore();
 let cloudUnsubscribe = null, saveTimer = null;
+
+// ── PWA INSTALL ───────────────────────────────
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if(!localStorage.getItem('pwa_dismissed')) {
+    const banner = document.getElementById('pwa-banner');
+    if(banner) banner.style.display = 'flex';
+  }
+});
+window.addEventListener('appinstalled', () => {
+  const banner = document.getElementById('pwa-banner');
+  if(banner) banner.style.display = 'none';
+  deferredInstallPrompt = null;
+});
+function installPWA(){
+  if(!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.then(() => {
+    deferredInstallPrompt = null;
+    document.getElementById('pwa-banner').style.display = 'none';
+  });
+}
+function dismissPWA(){
+  localStorage.setItem('pwa_dismissed','1');
+  document.getElementById('pwa-banner').style.display = 'none';
+}
 
 function genCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let r='';for(let i=0;i<6;i++)r+=c[Math.floor(Math.random()*c.length)];return r}
 
@@ -831,8 +892,10 @@ function totalIncome(){return S.paychecks.filter(p=>p.active).reduce((a,p)=>a+(p
 function catVelocity(catId){
   if(!isViewingCurrentMonth())return null;
   const now=new Date(),day=now.getDate(),daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+  if(day<7)return null;
   const spent=catSpent(catId);
-  const projected=day>0?Math.round((spent/day)*daysInMonth):0;
+  if(spent===0)return null;
+  const projected=Math.round((spent/day)*daysInMonth);
   return{projected,budget:S.categories.find(c=>c.id===catId)?.budget||0};
 }
 
@@ -969,8 +1032,58 @@ function renderAlerts(){
 function dismissAlert(id,el){S.dismissed.push(id);el.remove()}
 
 // ── DASHBOARD ─────────────────────────────────
+function renderPaydayCard(){
+  const wrap=document.getElementById('payday-card-wrap');if(!wrap)return;
+  const active=S.paychecks.find(p=>p.active&&p.date);
+  if(!active){wrap.innerHTML='';return}
+  const today=new Date();today.setHours(0,0,0,0);
+  const pay=new Date(active.date+'T12:00:00');pay.setHours(0,0,0,0);
+  const d=Math.round((pay-today)/86400000);
+  const freq=active.freq==='biweekly'?14:active.freq==='weekly'?7:active.freq==='semimonthly'?15:30;
+  const barPct=Math.max(0,Math.min(100,Math.round((1-(d/freq))*100)));
+  const dateStr=pay.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  let icon='💰',label,days;
+  if(d===0){icon='🎉';label='Payday!';days='Today'}
+  else if(d>0){label='Next Paycheck';days=`${d} day${d===1?'':'s'} away`}
+  else{label='Last Paycheck';days=`${Math.abs(d)} day${Math.abs(d)===1?'':'s'} ago`}
+  wrap.innerHTML=`<div class="payday-card">
+    <div class="payday-card-icon">${icon}</div>
+    <div style="flex:1">
+      <div class="payday-card-label">${label}</div>
+      <div class="payday-card-days">${days}</div>
+      <div class="payday-card-date">${dateStr} · ${active.label}</div>
+      ${d>0?`<div class="payday-card-bar"><div class="payday-card-fill" style="width:${barPct}%"></div></div>`:''}
+    </div>
+    <div style="text-align:right;flex-shrink:0">
+      <div style="font-size:10px;opacity:.7;margin-bottom:2px">per check</div>
+      <div style="font-size:15px;font-weight:800">${fmt(active.amount)}</div>
+    </div>
+  </div>`;
+}
+
+function renderIncomeBar(spent,income){
+  const wrap=document.getElementById('income-bar-wrap');if(!wrap)return;
+  if(!income){wrap.innerHTML='';return}
+  const pct=Math.min(100,Math.round(spent/income*100));
+  const color=pct>=100?'var(--danger)':pct>=80?'var(--warning)':'var(--primary)';
+  wrap.innerHTML=`<div class="income-bar-card">
+    <div class="income-bar-row">
+      <span class="income-bar-label">Monthly Spending</span>
+      <span class="income-bar-pct" style="color:${color}">${pct}% of income</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" style="width:${pct}%;background:${color}"></div>
+    </div>
+    <div class="income-bar-row" style="margin-top:6px;margin-bottom:0">
+      <span style="color:var(--muted);font-size:11px">${fmt(spent)} spent</span>
+      <span style="color:var(--muted);font-size:11px">${fmt(income)} income</span>
+    </div>
+  </div>`;
+}
+
 function renderDashboard(){
   renderAlerts();
+  renderPaydayCard();
   renderMonthNav('dash-month-nav');
   const spent=totalSpent(),budget=totalBudget(),savings=savingsSpent();
   const income=totalIncome();
@@ -982,27 +1095,25 @@ function renderDashboard(){
   document.getElementById('hero-spent').textContent=fmt(spent);
   document.getElementById('hero-saved').textContent=fmt(savings);
   document.getElementById('hero-days').textContent=isViewingCurrentMonth()?daysLeftInMonth():'—';
-  // paycheck sub
-  const d=daysUntilPaycheck();
-  const sub=document.getElementById('dash-paycheck-sub');
-  if(sub){
-    if(d===null)sub.textContent='';
-    else if(d===0)sub.textContent='Payday today! 🎉';
-    else if(d>0)sub.textContent=`Next paycheck in ${d} day${d===1?'':'s'}`;
-    else sub.textContent=`Last paycheck was ${Math.abs(d)} day${Math.abs(d)===1?'':'s'} ago`;
-  }
-  // velocity on hero
-  if(isViewingCurrentMonth()&&budget>0){
-    const now=new Date(),day=now.getDate(),dim=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
-    const projected=day>0?Math.round((spent/day)*dim):0;
-    const vel=document.getElementById('hero-velocity');
-    if(vel){
-      const diff=projected-budget;
-      if(diff>50)vel.innerHTML=`<div class="velocity-chip">📈 On pace to overspend by ${fmt(diff)}</div>`;
-      else if(diff<-50)vel.innerHTML=`<div class="velocity-chip">✅ On track — ${fmt(Math.abs(diff))} under budget</div>`;
-      else vel.innerHTML='';
+  // velocity on hero — only after 7 days with real data
+  const vel=document.getElementById('hero-velocity');
+  if(vel){
+    if(isViewingCurrentMonth()&&spent>0&&income>0){
+      const now=new Date(),day=now.getDate(),dim=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+      if(day>=7){
+        const projected=Math.round((spent/day)*dim);
+        const diff=projected-income;
+        if(diff>50)vel.innerHTML=`<div class="velocity-chip">📈 On pace to spend ${fmt(projected)} this month</div>`;
+        else if(diff<-50)vel.innerHTML=`<div class="velocity-chip">✅ On track — projected ${fmt(projected)}</div>`;
+        else vel.innerHTML='';
+      } else {
+        vel.innerHTML=`<div class="velocity-chip" style="opacity:.6">📊 Projection available after day 7</div>`;
+      }
+    } else {
+      vel.innerHTML='';
     }
   }
+  renderIncomeBar(spent,income||budget);
   renderBillsCard();
   renderPie(pct);
   renderRecentTxns();
@@ -1081,7 +1192,7 @@ function renderRecentTxns(){
         <div class="txn-icon" style="background:${bg}">${cat.emoji||'💸'}</div>
         <div class="txn-info">
           <div class="txn-name">${tx.name||catName}</div>
-          <div class="txn-meta">${catName} · ${dateStr}${tx.recurring?' · 🔄':''}</div>
+          <div class="txn-meta">${catName} · ${dateStr}${tx.recurring?' · 🔄':''}${tx.loggedBy&&tx.loggedBy!==S.user.name?` · <span style="color:var(--primary);font-weight:700">${tx.loggedBy}</span>`:' · <span style="color:var(--muted)">You</span>'}</div>
           ${tx.note?`<div class="txn-note">📝 ${tx.note}</div>`:''}
         </div>
         <div class="txn-amt">-${fmt(tx.amount)}</div>
@@ -1172,7 +1283,7 @@ function logExpense(){
   const catName=typeof cat.name==='object'?cat.name['en']:cat.name;
   const _now=new Date();
   const _localDate=`${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}-${String(_now.getDate()).padStart(2,'0')}`;
-  const tx={id:Date.now().toString(),catId:expenseCatId,name:name||catName,amount:amt,date:_localDate,emoji:cat.emoji};
+  const tx={id:Date.now().toString(),catId:expenseCatId,name:name||catName,amount:amt,date:_localDate,emoji:cat.emoji,loggedBy:S.user.name};
   if(note)tx.note=note;
   if(recurring){
     tx.recurring=true;
@@ -1222,7 +1333,7 @@ function logQuickExpense(){
   const catName=typeof cat.name==='object'?cat.name['en']:cat.name;
   const _now2=new Date();
   const _localDate2=`${_now2.getFullYear()}-${String(_now2.getMonth()+1).padStart(2,'0')}-${String(_now2.getDate()).padStart(2,'0')}`;
-  const tx={id:Date.now().toString(),catId,name:name||catName,amount:amt,date:_localDate2,emoji:cat.emoji};
+  const tx={id:Date.now().toString(),catId,name:name||catName,amount:amt,date:_localDate2,emoji:cat.emoji,loggedBy:S.user.name};
   if(note)tx.note=note;
   if(recurring){
     tx.recurring=true;
@@ -1387,6 +1498,14 @@ function updateAlloc(){
   else if(rem>0){cls='alloc-warn';txt=`${total}% allocated — ${rem}% left`}
   else{cls='alloc-over';txt=`⚠️ Over by ${Math.abs(rem)}%! Reduce some categories.`}
   bar.innerHTML=`<div class="alloc-total ${cls}">${txt}</div>`;
+}
+
+function resetAllocToDefaults(){
+  S.categories.forEach(cat=>{
+    const def=DEFAULT_CATEGORIES.find(d=>d.id===cat.id);
+    ALLOC[cat.id]=def?def.pct:cat.pct||0;
+  });
+  renderAllocSliders();updateAlloc();
 }
 
 function applyPaycheck(){
