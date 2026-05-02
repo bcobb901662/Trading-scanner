@@ -346,8 +346,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="modal-title" id="exp-modal-title">Add Expense</div>
     <div class="form-group"><label class="form-label">What did you buy?</label>
       <input id="exp-name" class="form-input" type="text" placeholder="e.g. Walmart, Shell Gas…"></div>
-    <div class="form-group"><label class="form-label">Amount ($)</label>
-      <input id="exp-amt" class="form-input" type="number" placeholder="0.00" step="0.01" min="0.01"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Amount ($)</label>
+        <input id="exp-amt" class="form-input" type="number" placeholder="0.00" step="0.01" min="0.01"></div>
+      <div class="form-group"><label class="form-label">Date</label>
+        <input id="exp-date" class="form-input" type="date"></div>
+    </div>
     <div class="form-group"><label class="form-label">Note (optional)</label>
       <input id="exp-note" class="form-input" type="text" placeholder="Any details…" maxlength="80"></div>
     <div class="form-group" style="display:flex;align-items:center;gap:10px">
@@ -433,8 +437,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <select id="quick-cat" class="form-input"></select></div>
     <div class="form-group"><label class="form-label">What did you buy?</label>
       <input id="quick-name" class="form-input" type="text" placeholder="e.g. Walmart, Shell Gas…"></div>
-    <div class="form-group"><label class="form-label">Amount ($)</label>
-      <input id="quick-amt" class="form-input" type="number" placeholder="0.00" step="0.01" min="0.01"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Amount ($)</label>
+        <input id="quick-amt" class="form-input" type="number" placeholder="0.00" step="0.01" min="0.01"></div>
+      <div class="form-group"><label class="form-label">Date</label>
+        <input id="quick-date" class="form-input" type="date"></div>
+    </div>
     <div class="form-group"><label class="form-label">Note (optional)</label>
       <input id="quick-note" class="form-input" type="text" placeholder="Any details…" maxlength="80"></div>
     <div class="form-group" style="display:flex;align-items:center;gap:10px">
@@ -1269,6 +1277,8 @@ function openExpenseModal(catId){
   document.getElementById('exp-amt').value='';
   document.getElementById('exp-note').value='';
   document.getElementById('exp-recurring').checked=false;
+  const _td=new Date();
+  document.getElementById('exp-date').value=`${_td.getFullYear()}-${String(_td.getMonth()+1).padStart(2,'0')}-${String(_td.getDate()).padStart(2,'0')}`;
   openModal('expense-overlay');
   setTimeout(()=>document.getElementById('exp-amt').focus(),200);
 }
@@ -1282,7 +1292,8 @@ function logExpense(){
   const cat=S.categories.find(c=>c.id===expenseCatId);
   const catName=typeof cat.name==='object'?cat.name['en']:cat.name;
   const _now=new Date();
-  const _localDate=`${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}-${String(_now.getDate()).padStart(2,'0')}`;
+  const _todayLocal=`${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}-${String(_now.getDate()).padStart(2,'0')}`;
+  const _localDate=document.getElementById('exp-date').value||_todayLocal;
   const tx={id:Date.now().toString(),catId:expenseCatId,name:name||catName,amount:amt,date:_localDate,emoji:cat.emoji,loggedBy:S.user.name};
   if(note)tx.note=note;
   if(recurring){
@@ -1319,6 +1330,8 @@ function openQuickAdd(){
   sel.innerHTML=S.categories.map(c=>`<option value="${c.id}">${c.emoji} ${typeof c.name==='object'?c.name[S.lang]:c.name}</option>`).join('');
   document.getElementById('quick-name').value='';document.getElementById('quick-amt').value='';
   document.getElementById('quick-note').value='';document.getElementById('quick-recurring').checked=false;
+  const _qd=new Date();
+  document.getElementById('quick-date').value=`${_qd.getFullYear()}-${String(_qd.getMonth()+1).padStart(2,'0')}-${String(_qd.getDate()).padStart(2,'0')}`;
   openModal('quick-overlay');
   setTimeout(()=>document.getElementById('quick-amt').focus(),200);
 }
@@ -1332,7 +1345,8 @@ function logQuickExpense(){
   const cat=S.categories.find(c=>c.id===catId);
   const catName=typeof cat.name==='object'?cat.name['en']:cat.name;
   const _now2=new Date();
-  const _localDate2=`${_now2.getFullYear()}-${String(_now2.getMonth()+1).padStart(2,'0')}-${String(_now2.getDate()).padStart(2,'0')}`;
+  const _todayLocal2=`${_now2.getFullYear()}-${String(_now2.getMonth()+1).padStart(2,'0')}-${String(_now2.getDate()).padStart(2,'0')}`;
+  const _localDate2=document.getElementById('quick-date').value||_todayLocal2;
   const tx={id:Date.now().toString(),catId,name:name||catName,amount:amt,date:_localDate2,emoji:cat.emoji,loggedBy:S.user.name};
   if(note)tx.note=note;
   if(recurring){
